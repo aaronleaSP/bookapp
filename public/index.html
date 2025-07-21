@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Book Manager</title>
+</head>
+<body>
+  <h1>Book Manager</h1>
+  <form id="bookForm">
+    <input id="title" placeholder="Title" required>
+    <input id="author" placeholder="Author" required>
+    <button>Add Book</button>
+  </form>
+  <p id="message"></p>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="bookTable"></tbody>
+  </table>
+  <script>
+    const apiKey = "ET0745";
+    let editId = null;
+    async function loadBooks() {
+      const res = await fetch('/api/books', { headers: { 'x-api-key': apiKey } });
+      const books = await res.json();
+      const table = document.getElementById('bookTable');
+      table.innerHTML = '';
+      books.forEach(b => {
+        const row = table.insertRow();
+        row.innerHTML =
+          `<td>${b.title}</td><td>${b.author}</td>
+          <td>
+            <button onclick='editBook(${b.id}, ${JSON.stringify(b.title)}, ${JSON.stringify(b.author)})'>Edit</button>
+            <button onclick="deleteBook(${b.id})">Delete</button>
+          </td>`;
+      });
+    }
+    async function deleteBook(id) {
+      await fetch(`/api/books/${id}`, { method: 'DELETE', headers: { 'x-api-key': apiKey } });
+      loadBooks();
+    }
+    function editBook(id, title, author) {
+      document.getElementById('title').value = title;
+      document.getElementById('author').value = author;
+      editId = id;
+      document.querySelector('#bookForm button').textContent = 'Update Book';
+    }
+    document.getElementById('bookForm').onsubmit = async e => {
+      e.preventDefault();
+      const titleValue = document.getElementById('title').value;
+      const authorValue = document.getElementById('author').value;
+      const method = editId ? 'PUT' : 'POST';
+      const url = editId ? `/api/books/${editId}` : '/api/books';
+      await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey
+        },
+        body: JSON.stringify({ title: titleValue, author: authorValue })
+      });
+      e.target.reset();
+      editId = null;
+      document.querySelector('#bookForm button').textContent = 'Add Book';
+      loadBooks();
+    };
+    loadBooks();
+  </script>
+</body>
+</html>

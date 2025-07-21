@@ -1,49 +1,47 @@
 const express = require('express');
 const router = express.Router();
-let books = [
-  { id: 1, title: '1984', author: 'George Orwell' },
-  { id: 2, title: 'The Hobbit', author: 'J.R.R. Tolkien' }
-];
+const db = require('../database');
+
 router.get('/', (req, res) => {
-  res.json(books);
+  db.query('SELECT * FROM books', (err, results) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.json(results);
+  });
 });
+
 router.get('/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id));
-  if (!book) return res.status(404).json({ message: 'Book not found' });
-  res.json(book);
+  db.query('SELECT * FROM books WHERE id = ?', [req.params.id], (err, results) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (results.length === 0) return res.status(404).json({ message: 'Book not found' });
+    res.json(results[0]);
+  });
 });
+
 router.post('/', (req, res) => {
   const { title, author } = req.body;
-  if (!title || !author) {
-    return res.status(400).json({ message: 'Title and author are required.' });
-  }
-  const newBook = {
-    id: books.length + 1,
-    title,
-    author
-  };
-  books.push(newBook);
-  res.status(201).json(newBook);
+  if (!title || !author) return res.status(400).json({ message: 'Title and author required' });
+
+  db.query('INSERT INTO books (title, author) VALUES (?, ?)', [title, author], (err, result) => {
+    if (err) return res.status(500).json({ message: err.message });
+    res.status(201).json({ id: result.insertId, title, author });
+  });
 });
 
 router.put('/:id', (req, res) => {
   const { title, author } = req.body;
-  const book = books.find(b => b.id === parseInt(req.params.id));
-  if (!book) return res.status(404).json({ message: 'Book not found' });
-  if (!title || !author) {
-    return res.status(400).json({ message: 'Title and author are required.' });
-  }
-  book.title = title;
-  book.author = author;
-  res.json(book);
+  db.query('UPDATE books SET title = ?, author = ? WHERE id = ?', [title, author, req.params.id], (err, result) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Book not found' });
+    res.json({ id: req.params.id, title, author });
+  });
 });
 
 router.delete('/:id', (req, res) => {
-  const bookIndex = books.findIndex(b => b.id === parseInt(req.params.id));
-  if (bookIndex === -1) return res.status(404).json({ message: 'Book not found' });
-  books.splice(bookIndex, 1);
-  res.status(204).send();
+  db.query('DELETE FROM books WHERE id = ?', [req.params.id], (err, result) => {
+    if (err) return res.status(500).json({ message: err.message });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Book not found' });
+    res.status(204).send();
+  });
 });
-
 
 module.exports = router;
