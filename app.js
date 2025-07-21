@@ -7,6 +7,16 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Route to force an error for testing
+app.get('/crash', (req, res) => {
+  throw new Error('Simulated crash');
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!' });
+});
+
 app.use((req, res, next) => {
   const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.API_KEY) {
@@ -15,38 +25,9 @@ app.use((req, res, next) => {
   next();
 });
 
-let books = [
-  { id: 1, title: '1984', author: 'George Orwell' },
-  { id: 2, title: 'The Hobbit', author: 'J.R.R. Tolkien' }
-];
+const bookRoutes = require('./routes/books');
+app.use('/api/books', bookRoutes);
 
-app.get('/api/books', (req, res) => {
-  res.json(books);
-});
-
-app.get('/api/books/:id', (req, res) => {
-  const book = books.find(b => b.id === parseInt(req.params.id));
-  if (!book) return res.status(404).json({ message: 'Book not found' });
-  res.json(book);
-});
-
-app.get('/', (req, res) => {
-  res.send('Book API is running');
-});
-
-app.post('/api/books', (req, res) => {
-  const { title, author } = req.body;
-  if (!title || !author) {
-    return res.status(400).json({ message: 'Title and author are required.' });
-  }
-  const newBook = {
-    id: books.length + 1,
-    title,
-    author
-  };
-  books.push(newBook);
-  res.status(201).json(newBook);
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
